@@ -1,8 +1,6 @@
 # analyze-my-loan
 Tool to analyze loans
 
-Certainly! Here’s a **Markdown README** for your project, which includes an overview of the loan calculator, installation instructions, usage, and details about the current features. You can save this as a `README.md` file for your GitHub project.
-
 ```markdown
 # Loan Calculator with PyQt
 
