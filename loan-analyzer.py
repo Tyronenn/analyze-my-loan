@@ -147,7 +147,9 @@ class LoanCalculator(QMainWindow):
         self.ax.set_title("Loan Repayment Breakdown")
         self.ax.set_xlabel("Month")
         self.ax.set_ylabel("Amount Paid")
-        self.ax.legend()
+
+        # Move the legend outside the plot, below the graph
+        self.ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=2)
 
         # Add grid lines based on user preferences
         self.ax.grid(
