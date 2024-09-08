@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QSlider, QLabel, QWidget, QTableWidget, QTableWidgetItem, QLineEdit, QHBoxLayout, QCheckBox, QDockWidget)
 from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPalette, QColor
+from PyQt6.QtGui import QPalette, QColor, QIcon
 import numpy as np
 import sys
 import matplotlib.pyplot as plt
@@ -38,10 +38,13 @@ def calculate_loan_details(loan_amount, down_payment, annual_rate, years, extra_
 
 
 # The main application window class
-class LoanCalculator(QMainWindow):
+class MoneyAnalyzer(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Loan Calculator with PyQt")
+        self.setWindowTitle("Money Analyzer")
+
+        # Set the window icon
+        self.setWindowIcon(QIcon(r"C:\Users\Snail\Python\analyze-my-loan\money-analysis.png"))
 
         # Create Graph widget
         self.graph_widget = QWidget()
@@ -52,7 +55,7 @@ class LoanCalculator(QMainWindow):
         self.amortization_layout = QVBoxLayout(self.amortization_widget)
 
         # Create dock widgets
-        self.graph_dock = QDockWidget("Graph", self)
+        self.graph_dock = QDockWidget("Loan Analyzer", self)
         self.graph_dock.setWidget(self.graph_widget)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.graph_dock)
 
@@ -240,6 +243,13 @@ class LoanCalculator(QMainWindow):
 # Main function to run the application
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    window = LoanCalculator()
+    
+    # Set the application name
+    app.setApplicationName("Money Analyzer")
+    
+    # Optionally, set the organization name (useful for settings)
+    app.setOrganizationName("Money Analyzer")
+    
+    window = MoneyAnalyzer()
     window.show()
     sys.exit(app.exec())
