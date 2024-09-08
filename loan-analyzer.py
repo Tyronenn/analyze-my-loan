@@ -43,11 +43,6 @@ class LoanCalculator(QMainWindow):
         super().__init__()
         self.setWindowTitle("Loan Calculator with PyQt")
 
-        # Create main widget and layout
-        self.main_widget = QWidget()
-        self.setCentralWidget(self.main_widget)
-        self.layout = QVBoxLayout(self.main_widget)
-
         # Create Graph widget
         self.graph_widget = QWidget()
         self.graph_layout = QVBoxLayout(self.graph_widget)
@@ -70,6 +65,9 @@ class LoanCalculator(QMainWindow):
 
         # Apply custom styles to make boundaries more visible
         self.apply_custom_styles()
+
+        # Instead, set the central widget to None
+        self.setCentralWidget(None)
 
         # Loan Amount Slider + Input Field
         self.loan_amount_slider, self.loan_amount_input = self.create_slider_with_input(1000, 1000000, 250000, "Loan Amount ($):")
@@ -238,13 +236,6 @@ class LoanCalculator(QMainWindow):
         }
         """
         self.setStyleSheet(dock_style)
-
-        # Set a frame around the central widget
-        self.main_widget.setAutoFillBackground(True)
-        palette = self.main_widget.palette()
-        palette.setColor(QPalette.ColorRole.Window, QColor("#ffffff"))
-        self.main_widget.setPalette(palette)
-        self.main_widget.setStyleSheet("border: 1px solid #999999;")
 
 # Main function to run the application
 if __name__ == "__main__":
