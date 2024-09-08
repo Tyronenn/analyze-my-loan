@@ -40,7 +40,7 @@ def calculate_loan_details(loan_amount, down_payment, annual_rate, years, extra_
 class LoanCalculator(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Loan Calculator with PyQt")
+        self.setWindowTitle("My Financial Planner")
 
         # Create main widget and layout
         self.main_widget = QWidget()
@@ -56,7 +56,7 @@ class LoanCalculator(QMainWindow):
         self.amortization_layout = QVBoxLayout(self.amortization_widget)
 
         # Create dock widgets
-        self.graph_dock = QDockWidget("Graph", self)
+        self.graph_dock = QDockWidget("Loan Details", self)
         self.graph_dock.setWidget(self.graph_widget)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.graph_dock)
 
