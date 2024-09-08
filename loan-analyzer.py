@@ -7,25 +7,33 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 
 # Function to calculate loan payment details
-def calculate_loan_details(loan_amount, down_payment, annual_rate, years):
+def calculate_loan_details(loan_amount, down_payment, annual_rate, years, extra_payment):
     principal = loan_amount - down_payment
     monthly_rate = annual_rate / 100 / 12
     num_payments = years * 12
-    if monthly_rate == 0:
-        monthly_payment = principal / num_payments
-    else:
-        monthly_payment = principal * monthly_rate / (1 - (1 + monthly_rate) ** -num_payments)
+    monthly_payment = principal * monthly_rate / (1 - (1 + monthly_rate) ** -num_payments) if monthly_rate != 0 else principal / num_payments
 
-    interest_payment = np.zeros(num_payments)
-    principal_payment = np.zeros(num_payments)
+    interest_payment = []
+    principal_payment = []
     remaining_balance = principal
 
-    for i in range(num_payments):
-        interest_payment[i] = remaining_balance * monthly_rate
-        principal_payment[i] = monthly_payment - interest_payment[i]
-        remaining_balance -= principal_payment[i]
+    for _ in range(num_payments):
+        interest = remaining_balance * monthly_rate
+        principal_paid = monthly_payment - interest + extra_payment
+        if remaining_balance - principal_paid < 0:  # If the loan is paid off
+            principal_paid = remaining_balance
+            interest = remaining_balance * monthly_rate
+            monthly_payment = principal_paid + interest
 
-    return monthly_payment, principal_payment, interest_payment
+        remaining_balance -= principal_paid
+
+        interest_payment.append(interest)
+        principal_payment.append(principal_paid)
+
+        if remaining_balance <= 0:  # Break early if the loan is paid off
+            break
+
+    return monthly_payment, np.array(principal_payment), np.array(interest_payment)
 
 
 # The main application window class
