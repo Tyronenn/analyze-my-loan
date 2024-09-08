@@ -92,7 +92,7 @@ python loan_calculator.py
 ```bash
 loan-calculator/
 │
-├── loan_calculator.py         # Main application script
+├── loan_analyzer.py         # Main application script
 ├── requirements.txt           # Python dependencies
 └── README.md                  # Project documentation
 ```
@@ -113,16 +113,4 @@ Contributions are welcome! If you'd like to improve the project or add new featu
 
 ## Contact
 
-For questions or feedback, please reach out to **[your-email@example.com](mailto:your-email@example.com)** or open an issue on GitHub.
-
-```
-
-### Additional Notes:
-- **Project Structure**: The `loan_calculator.py` file is assumed to be the main script file in your project.
-- **Planned Features**: I've included the planned features you've mentioned, which you can adjust as necessary.
-- **Installation**: The instructions assume users will either use a virtual environment or install the requirements manually.
-- **Contributing**: I've added a generic section for contributions, which can be expanded based on your preferences.
-
-Feel free to customize the **Contact** and **Contributing** sections to match your preferences, as well as update the **license** if needed.
-
-Let me know if you'd like any further adjustments! 😊
+For questions or feedback, please reach out to **[TBD](mailto:your-email@example.com)** or open an issue on GitHub.
