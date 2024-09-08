@@ -1,7 +1,6 @@
 # analyze-my-loan
 Tool to analyze loans
 
-```markdown
 # Loan Calculator with PyQt
 
 ## Overview
