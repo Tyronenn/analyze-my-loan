@@ -1,9 +1,9 @@
-import sys
-import numpy as np
-from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QSlider, QLabel, QWidget, QTabWidget, QTableWidget, QTableWidgetItem, QLineEdit, QHBoxLayout)
+from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QSlider, QLabel, QWidget, QTabWidget, QTableWidget, QTableWidgetItem, QLineEdit, QHBoxLayout, QCheckBox)
 from PyQt6.QtCore import Qt
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+import numpy as np
+import sys
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 
 # Function to calculate loan payment details
@@ -67,6 +67,19 @@ class LoanCalculator(QMainWindow):
         self.loan_term_slider, self.loan_term_input = self.create_slider_with_input(1, 30, 30, "Loan Term (Years):")
         self.loan_term_slider.valueChanged.connect(self.update_graph_and_summary)
         self.loan_term_input.textChanged.connect(lambda value: self.update_slider_from_input(self.loan_term_slider, value))
+
+        # Add checkboxes to toggle grid lines
+        self.horizontal_grid_checkbox = QCheckBox("Show Horizontal Grid Lines")
+        self.horizontal_grid_checkbox.setChecked(True)
+        self.horizontal_grid_checkbox.stateChanged.connect(self.update_graph_and_summary)
+
+        self.vertical_grid_checkbox = QCheckBox("Show Vertical Grid Lines")
+        self.vertical_grid_checkbox.setChecked(True)
+        self.vertical_grid_checkbox.stateChanged.connect(self.update_graph_and_summary)
+
+        # Add the checkboxes to the layout
+        self.layout.addWidget(self.horizontal_grid_checkbox)
+        self.layout.addWidget(self.vertical_grid_checkbox)
 
         # Summary Label
         self.summary_label = QLabel("")
@@ -135,6 +148,20 @@ class LoanCalculator(QMainWindow):
         self.ax.set_xlabel("Month")
         self.ax.set_ylabel("Amount Paid")
         self.ax.legend()
+
+        # Add grid lines based on user preferences
+        self.ax.grid(
+            self.horizontal_grid_checkbox.isChecked(),
+            axis='y',  # Horizontal grid lines
+        )
+        self.ax.grid(
+            self.vertical_grid_checkbox.isChecked(),
+            axis='x',  # Vertical grid lines
+        )
+
+        # Use tight_layout to prevent label cutoff
+        self.fig.tight_layout()
+
         self.canvas.draw()
 
         # Update the summary text
