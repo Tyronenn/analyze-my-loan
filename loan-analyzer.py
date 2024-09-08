@@ -7,25 +7,33 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 
 
 # Function to calculate loan payment details
-def calculate_loan_details(loan_amount, down_payment, annual_rate, years):
+def calculate_loan_details(loan_amount, down_payment, annual_rate, years, extra_payment):
     principal = loan_amount - down_payment
     monthly_rate = annual_rate / 100 / 12
     num_payments = years * 12
-    if monthly_rate == 0:
-        monthly_payment = principal / num_payments
-    else:
-        monthly_payment = principal * monthly_rate / (1 - (1 + monthly_rate) ** -num_payments)
+    monthly_payment = principal * monthly_rate / (1 - (1 + monthly_rate) ** -num_payments) if monthly_rate != 0 else principal / num_payments
 
-    interest_payment = np.zeros(num_payments)
-    principal_payment = np.zeros(num_payments)
+    interest_payment = []
+    principal_payment = []
     remaining_balance = principal
 
-    for i in range(num_payments):
-        interest_payment[i] = remaining_balance * monthly_rate
-        principal_payment[i] = monthly_payment - interest_payment[i]
-        remaining_balance -= principal_payment[i]
+    for _ in range(num_payments):
+        interest = remaining_balance * monthly_rate
+        principal_paid = monthly_payment - interest + extra_payment
+        if remaining_balance - principal_paid < 0:  # If the loan is paid off
+            principal_paid = remaining_balance
+            interest = remaining_balance * monthly_rate
+            monthly_payment = principal_paid + interest
 
-    return monthly_payment, principal_payment, interest_payment
+        remaining_balance -= principal_paid
+
+        interest_payment.append(interest)
+        principal_payment.append(principal_paid)
+
+        if remaining_balance <= 0:  # Break early if the loan is paid off
+            break
+
+    return monthly_payment, np.array(principal_payment), np.array(interest_payment)
 
 
 # The main application window class
@@ -68,6 +76,11 @@ class LoanCalculator(QMainWindow):
         self.loan_term_slider.valueChanged.connect(self.update_graph_and_summary)
         self.loan_term_input.textChanged.connect(lambda value: self.update_slider_from_input(self.loan_term_slider, value))
 
+        # Extra Payment Slider + Input Field
+        self.extra_payment_slider, self.extra_payment_input = self.create_slider_with_input(0, 10000, 0, "Extra Monthly Payment ($):")
+        self.extra_payment_slider.valueChanged.connect(self.update_graph_and_summary)
+        self.extra_payment_input.textChanged.connect(lambda value: self.update_slider_from_input(self.extra_payment_slider, value))
+        
         # Add checkboxes to toggle grid lines
         self.horizontal_grid_checkbox = QCheckBox("Show Horizontal Grid Lines")
         self.horizontal_grid_checkbox.setChecked(True)
@@ -135,9 +148,14 @@ class LoanCalculator(QMainWindow):
         self.interest_rate_input.setText(f"{interest_rate:.1f}")
         self.loan_term_input.setText(f"{loan_term}")
 
-        # Calculate loan details
+        extra_payment = self.extra_payment_slider.value()
+        
+        # Update the extra payment input field based on the slider value
+        self.extra_payment_input.setText(f"{extra_payment}")
+
+        # Call the loan calculation function
         monthly_payment, principal_payment, interest_payment = calculate_loan_details(
-            loan_amount, down_payment, interest_rate, loan_term
+            loan_amount, down_payment, interest_rate, loan_term, extra_payment
         )
 
         # Update the graph
