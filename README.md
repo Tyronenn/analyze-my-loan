@@ -62,7 +62,7 @@ pip install pyqt6 numpy matplotlib
 To run the application, simply execute the main script:
 
 ```bash
-python loan_calculator.py
+python loan-analyzer.py
 ```
 
 ### User Instructions:
