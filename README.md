@@ -32,7 +32,7 @@ The calculator can handle various types of loans and provides an amortization ta
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/loan-calculator.git
+git clone https://github.com/Tyronenn/analyze-my-loan.git
 cd loan-calculator
 ```
 
