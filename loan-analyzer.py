@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QSlider, QLabel, QWidget, QTabWidget, QTableWidget, QTableWidgetItem, QLineEdit, QHBoxLayout, QCheckBox)
+from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QSlider, QLabel, QWidget, QTableWidget, QTableWidgetItem, QLineEdit, QHBoxLayout, QCheckBox, QDockWidget)
 from PyQt6.QtCore import Qt
 import numpy as np
 import sys
@@ -40,21 +40,32 @@ def calculate_loan_details(loan_amount, down_payment, annual_rate, years, extra_
 class LoanCalculator(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Loan Calculator with PyQt")
+        self.setWindowTitle("My Financial Planner")
 
-        # Create a tab widget
-        self.tabs = QTabWidget()
-        self.setCentralWidget(self.tabs)
-
-        # Create tabs
+        # Create main widget and layout
         self.main_widget = QWidget()
-        self.amortization_widget = QWidget()
-
-        self.tabs.addTab(self.main_widget, "Graph")
-        self.tabs.addTab(self.amortization_widget, "Amortization Table")
-
-        # --- Main Widget Setup (Graph Tab) ---
+        self.setCentralWidget(self.main_widget)
         self.layout = QVBoxLayout(self.main_widget)
+
+        # Create Graph widget
+        self.graph_widget = QWidget()
+        self.graph_layout = QVBoxLayout(self.graph_widget)
+
+        # Create Amortization widget
+        self.amortization_widget = QWidget()
+        self.amortization_layout = QVBoxLayout(self.amortization_widget)
+
+        # Create dock widgets
+        self.graph_dock = QDockWidget("Loan Details", self)
+        self.graph_dock.setWidget(self.graph_widget)
+        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.graph_dock)
+
+        self.amortization_dock = QDockWidget("Amortization Table", self)
+        self.amortization_dock.setWidget(self.amortization_widget)
+        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.amortization_dock)
+
+        # Allow nested docks
+        self.setDockNestingEnabled(True)
 
         # Loan Amount Slider + Input Field
         self.loan_amount_slider, self.loan_amount_input = self.create_slider_with_input(1000, 1000000, 250000, "Loan Amount ($):")
@@ -91,20 +102,19 @@ class LoanCalculator(QMainWindow):
         self.vertical_grid_checkbox.stateChanged.connect(self.update_graph_and_summary)
 
         # Add the checkboxes to the layout
-        self.layout.addWidget(self.horizontal_grid_checkbox)
-        self.layout.addWidget(self.vertical_grid_checkbox)
+        self.graph_layout.addWidget(self.horizontal_grid_checkbox)
+        self.graph_layout.addWidget(self.vertical_grid_checkbox)
 
         # Summary Label
         self.summary_label = QLabel("")
-        self.layout.addWidget(self.summary_label)
+        self.graph_layout.addWidget(self.summary_label)
 
         # Matplotlib Figure and Canvas
         self.fig, self.ax = plt.subplots(figsize=(6, 4))
         self.canvas = FigureCanvas(self.fig)
-        self.layout.addWidget(self.canvas)
+        self.graph_layout.addWidget(self.canvas)
 
-        # --- Amortization Table Setup (Second Tab) ---
-        self.amortization_layout = QVBoxLayout(self.amortization_widget)
+        # Amortization Table
         self.amortization_table = QTableWidget()
         self.amortization_layout.addWidget(self.amortization_table)
 
@@ -114,7 +124,7 @@ class LoanCalculator(QMainWindow):
     def create_slider_with_input(self, min_value, max_value, default_value, label, scale_factor=1):
         """Create a slider with an input field beside it, in a horizontal layout."""
         layout = QHBoxLayout()
-        self.layout.addWidget(QLabel(label))
+        self.graph_layout.addWidget(QLabel(label))
         slider = QSlider(Qt.Orientation.Horizontal)
         slider.setRange(min_value, max_value)
         slider.setValue(default_value)
@@ -125,7 +135,7 @@ class LoanCalculator(QMainWindow):
 
         layout.addWidget(slider)
         layout.addWidget(input_field)
-        self.layout.addLayout(layout)
+        self.graph_layout.addLayout(layout)
 
         return slider, input_field
 
