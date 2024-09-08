@@ -1,11 +1,8 @@
 # analyze-my-loan
-Tool to analyze loans
-
-# Loan Calculator with PyQt
 
 ## Overview
 
-This Python-based **Loan Calculator** provides a graphical user interface (GUI) using **PyQt** to help users calculate their monthly loan payments, total interest paid, and view an amortization schedule. The app also features interactive sliders for adjusting loan parameters, and it dynamically updates the graph and summary information in real-time.
+This Python-based **Loan Analyzer** provides a graphical user interface (GUI) using **PyQt** to help users calculate their monthly loan payments, total interest paid, and view an amortization schedule. The app also features interactive sliders for adjusting loan parameters, and it dynamically updates the graph and summary information in real-time.
 
 The calculator can handle various types of loans and provides an amortization table that can be exported for external analysis. 
 
