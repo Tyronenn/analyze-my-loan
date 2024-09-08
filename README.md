@@ -1,4 +1,4 @@
-# analyze-my-loan
+# money-analyzer
 
 ## Overview
 
