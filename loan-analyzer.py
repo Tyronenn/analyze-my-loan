@@ -1,5 +1,6 @@
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QSlider, QLabel, QWidget, QTableWidget, QTableWidgetItem, QLineEdit, QHBoxLayout, QCheckBox, QDockWidget)
 from PyQt6.QtCore import Qt
+from PyQt6.QtGui import QPalette, QColor
 import numpy as np
 import sys
 import matplotlib.pyplot as plt
@@ -40,7 +41,7 @@ def calculate_loan_details(loan_amount, down_payment, annual_rate, years, extra_
 class LoanCalculator(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("My Financial Planner")
+        self.setWindowTitle("Loan Calculator with PyQt")
 
         # Create main widget and layout
         self.main_widget = QWidget()
@@ -56,7 +57,7 @@ class LoanCalculator(QMainWindow):
         self.amortization_layout = QVBoxLayout(self.amortization_widget)
 
         # Create dock widgets
-        self.graph_dock = QDockWidget("Loan Details", self)
+        self.graph_dock = QDockWidget("Graph", self)
         self.graph_dock.setWidget(self.graph_widget)
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.graph_dock)
 
@@ -66,6 +67,9 @@ class LoanCalculator(QMainWindow):
 
         # Allow nested docks
         self.setDockNestingEnabled(True)
+
+        # Apply custom styles to make boundaries more visible
+        self.apply_custom_styles()
 
         # Loan Amount Slider + Input Field
         self.loan_amount_slider, self.loan_amount_input = self.create_slider_with_input(1000, 1000000, 250000, "Loan Amount ($):")
@@ -222,6 +226,25 @@ class LoanCalculator(QMainWindow):
 
         self.amortization_table.resizeColumnsToContents()
 
+    def apply_custom_styles(self):
+        # Set a stylesheet for QDockWidget
+        dock_style = """
+        QDockWidget {
+            border: 1px solid #999999;
+        }
+        QDockWidget::title {
+            background: #cccccc;
+            padding-left: 5px;
+        }
+        """
+        self.setStyleSheet(dock_style)
+
+        # Set a frame around the central widget
+        self.main_widget.setAutoFillBackground(True)
+        palette = self.main_widget.palette()
+        palette.setColor(QPalette.ColorRole.Window, QColor("#ffffff"))
+        self.main_widget.setPalette(palette)
+        self.main_widget.setStyleSheet("border: 1px solid #999999;")
 
 # Main function to run the application
 if __name__ == "__main__":
