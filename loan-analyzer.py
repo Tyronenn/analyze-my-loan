@@ -76,6 +76,11 @@ class LoanCalculator(QMainWindow):
         self.loan_term_slider.valueChanged.connect(self.update_graph_and_summary)
         self.loan_term_input.textChanged.connect(lambda value: self.update_slider_from_input(self.loan_term_slider, value))
 
+        # Extra Payment Slider + Input Field
+        self.extra_payment_slider, self.extra_payment_input = self.create_slider_with_input(0, 10000, 0, "Extra Monthly Payment ($):")
+        self.extra_payment_slider.valueChanged.connect(self.update_graph_and_summary)
+        self.extra_payment_input.textChanged.connect(lambda value: self.update_slider_from_input(self.extra_payment_slider, value))
+        
         # Add checkboxes to toggle grid lines
         self.horizontal_grid_checkbox = QCheckBox("Show Horizontal Grid Lines")
         self.horizontal_grid_checkbox.setChecked(True)
@@ -143,9 +148,14 @@ class LoanCalculator(QMainWindow):
         self.interest_rate_input.setText(f"{interest_rate:.1f}")
         self.loan_term_input.setText(f"{loan_term}")
 
-        # Calculate loan details
+        extra_payment = self.extra_payment_slider.value()
+        
+        # Update the extra payment input field based on the slider value
+        self.extra_payment_input.setText(f"{extra_payment}")
+
+        # Call the loan calculation function
         monthly_payment, principal_payment, interest_payment = calculate_loan_details(
-            loan_amount, down_payment, interest_rate, loan_term
+            loan_amount, down_payment, interest_rate, loan_term, extra_payment
         )
 
         # Update the graph
