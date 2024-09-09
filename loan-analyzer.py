@@ -1,11 +1,10 @@
-from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QSlider, QLabel, QWidget, QTableWidget, QTableWidgetItem, QLineEdit, QHBoxLayout, QCheckBox, QDockWidget, QDialog, QComboBox, QPushButton)
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPalette, QColor, QIcon
+from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QSlider, QLabel, QWidget, QTableWidget, QTableWidgetItem, QLineEdit, QHBoxLayout, QCheckBox, QDockWidget, QDialog, QComboBox, QPushButton, QListWidget)
+from PyQt6.QtCore import Qt, QMimeData
+from PyQt6.QtGui import QPalette, QColor, QIcon, QDrag
 import numpy as np
 import sys
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-
 
 # Function to calculate loan payment details
 def calculate_loan_details(loan_amount, down_payment, annual_rate, years, extra_payment):
@@ -36,103 +35,139 @@ def calculate_loan_details(loan_amount, down_payment, annual_rate, years, extra_
 
     return monthly_payment, np.array(principal_payment), np.array(interest_payment)
 
+class DraggableWidget(QWidget):
+    def __init__(self, title, parent=None):
+        super().__init__(parent)
+        self.setAcceptDrops(True)
+        self.layout = QVBoxLayout(self)
+        self.title_label = QLabel(title)
+        self.layout.addWidget(self.title_label)
 
-# The main application window class
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            drag = QDrag(self)
+            mime_data = QMimeData()
+            mime_data.setText(self.title_label.text())
+            drag.setMimeData(mime_data)
+            drag.exec(Qt.DropAction.MoveAction)
+
+    def dragEnterEvent(self, event):
+        if event.mimeData().hasText():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event):
+        pos = event.position()
+        dropped_widget = event.source()
+        if dropped_widget != self:
+            self.layout.addWidget(dropped_widget)
+            event.acceptProposedAction()
+
+class Graph(DraggableWidget):
+    def __init__(self, title="Graph", parent=None):
+        super().__init__(title, parent)
+        self.fig, self.ax = plt.subplots(figsize=(6, 4))
+        self.canvas = FigureCanvas(self.fig)
+        self.layout.addWidget(self.canvas)
+        self.parameters = []
+
+    def dropEvent(self, event):
+        super().dropEvent(event)
+        parameter = event.mimeData().text()
+        if parameter not in self.parameters:
+            self.parameters.append(parameter)
+            self.update_graph()
+
+    def update_graph(self):
+        self.ax.clear()
+        # Here you would get the actual data for the parameters
+        # For now, we'll just plot some dummy data
+        for param in self.parameters:
+            self.ax.plot(range(10), np.random.rand(10), label=param)
+        self.ax.legend()
+        self.canvas.draw()
+
 class MoneyAnalyzer(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Money Analyzer")
-
-        # Set the window icon
         self.setWindowIcon(QIcon(r"C:\Users\Snail\Python\analyze-my-loan\money-analysis.png"))
 
-        # Create Graph widget
-        self.graph_widget = QWidget()
-        self.graph_layout = QVBoxLayout(self.graph_widget)
+        # Create central widget and layout
+        self.central_widget = QWidget()
+        self.central_layout = QHBoxLayout(self.central_widget)
+        self.setCentralWidget(self.central_widget)
 
-        # Create Amortization widget
-        self.amortization_widget = QWidget()
-        self.amortization_layout = QVBoxLayout(self.amortization_widget)
+        # Create left panel for controls
+        self.left_panel = QWidget()
+        self.left_layout = QVBoxLayout(self.left_panel)
+        self.central_layout.addWidget(self.left_panel)
 
-        # Create dock widgets
-        self.graph_dock = QDockWidget("Loan Analyzer", self)
-        self.graph_dock.setWidget(self.graph_widget)
-        self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.graph_dock)
+        # Create right panel for graphs and other widgets
+        self.right_panel = QWidget()
+        self.right_layout = QVBoxLayout(self.right_panel)
+        self.central_layout.addWidget(self.right_panel)
 
-        self.amortization_dock = QDockWidget("Amortization Table", self)
-        self.amortization_dock.setWidget(self.amortization_widget)
-        self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.amortization_dock)
+        # Add graph button
+        self.add_graph_button = QPushButton("Add Graph")
+        self.add_graph_button.clicked.connect(self.add_graph)
+        self.left_layout.addWidget(self.add_graph_button)
 
-        # Allow nested docks
-        self.setDockNestingEnabled(True)
+        # Create draggable parameters
+        self.create_draggable_parameters()
 
-        # Apply custom styles to make boundaries more visible
-        self.apply_custom_styles()
-
-        # Instead, set the central widget to None
-        self.setCentralWidget(None)
-
-        # Loan Amount Slider + Input Field
-        self.loan_amount_slider, self.loan_amount_input = self.create_slider_with_input(1000, 1000000, 250000, "Loan Amount ($):")
-        self.loan_amount_slider.valueChanged.connect(self.update_graph_and_summary)
-        self.loan_amount_input.textChanged.connect(lambda value: self.update_slider_from_input(self.loan_amount_slider, value))
-
-        # Down Payment Slider + Input Field
-        self.down_payment_slider, self.down_payment_input = self.create_slider_with_input(0, 500000, 50000, "Down Payment ($):")
-        self.down_payment_slider.valueChanged.connect(self.update_graph_and_summary)
-        self.down_payment_input.textChanged.connect(lambda value: self.update_slider_from_input(self.down_payment_slider, value))
-
-        # Interest Rate Slider + Input Field
-        self.interest_rate_slider, self.interest_rate_input = self.create_slider_with_input(5, 150, 50, "Interest Rate (%):", scale_factor=10)
-        self.interest_rate_slider.valueChanged.connect(self.update_graph_and_summary)
-        self.interest_rate_input.textChanged.connect(lambda value: self.update_slider_from_input(self.interest_rate_slider, value, scale_factor=10))
-
-        # Loan Term Slider + Input Field
-        self.loan_term_slider, self.loan_term_input = self.create_slider_with_input(1, 30, 30, "Loan Term (Years):")
-        self.loan_term_slider.valueChanged.connect(self.update_graph_and_summary)
-        self.loan_term_input.textChanged.connect(lambda value: self.update_slider_from_input(self.loan_term_slider, value))
-
-        # Extra Payment Slider + Input Field
-        self.extra_payment_slider, self.extra_payment_input = self.create_slider_with_input(0, 10000, 0, "Extra Monthly Payment ($):")
-        self.extra_payment_slider.valueChanged.connect(self.update_graph_and_summary)
-        self.extra_payment_input.textChanged.connect(lambda value: self.update_slider_from_input(self.extra_payment_slider, value))
-        
-        # Add checkboxes to toggle grid lines
-        self.horizontal_grid_checkbox = QCheckBox("Show Horizontal Grid Lines")
-        self.horizontal_grid_checkbox.setChecked(True)
-        self.horizontal_grid_checkbox.stateChanged.connect(self.update_graph_and_summary)
-
-        self.vertical_grid_checkbox = QCheckBox("Show Vertical Grid Lines")
-        self.vertical_grid_checkbox.setChecked(True)
-        self.vertical_grid_checkbox.stateChanged.connect(self.update_graph_and_summary)
-
-        # Add the checkboxes to the layout
-        self.graph_layout.addWidget(self.horizontal_grid_checkbox)
-        self.graph_layout.addWidget(self.vertical_grid_checkbox)
-
-        # Summary Label
-        self.summary_label = QLabel("")
-        self.graph_layout.addWidget(self.summary_label)
-
-        # Matplotlib Figure and Canvas
-        self.fig, self.ax = plt.subplots(figsize=(6, 4))
-        self.canvas = FigureCanvas(self.fig)
-        self.graph_layout.addWidget(self.canvas)
+        # Create sliders and inputs
+        self.create_sliders_and_inputs()
 
         # Amortization Table
         self.amortization_table = QTableWidget()
-        self.amortization_layout.addWidget(self.amortization_table)
+        self.amortization_widget = DraggableWidget("Amortization Table")
+        self.amortization_widget.layout.addWidget(self.amortization_table)
+        self.right_layout.addWidget(self.amortization_widget)
 
         # Connect the header click signal to the new method
         self.amortization_table.horizontalHeader().sectionClicked.connect(self.show_attribute_editor)
 
-        # Initial graph and summary update
-        self.update_graph_and_summary()
+        # Initial update
+        self.update_data()
+
+    def create_draggable_parameters(self):
+        parameters = ["Loan Amount", "Down Payment", "Interest Rate", "Loan Term", "Extra Payment"]
+        for param in parameters:
+            label = DraggableWidget(param)
+            self.left_layout.addWidget(label)
+
+    def create_sliders_and_inputs(self):
+        # Create sliders and inputs similar to before, but wrap them in DraggableWidget
+        loan_amount_widget = DraggableWidget("Loan Amount")
+        self.loan_amount_slider, self.loan_amount_input, container = self.create_slider_with_input(1000, 1000000, 250000, "Loan Amount ($):")
+        loan_amount_widget.layout.addWidget(container)
+        self.right_layout.addWidget(loan_amount_widget)
+
+        # Do the same for other sliders and inputs
+        down_payment_widget = DraggableWidget("Down Payment")
+        self.down_payment_slider, self.down_payment_input, container = self.create_slider_with_input(0, 500000, 50000, "Down Payment ($):")
+        down_payment_widget.layout.addWidget(container)
+        self.right_layout.addWidget(down_payment_widget)
+
+        interest_rate_widget = DraggableWidget("Interest Rate")
+        self.interest_rate_slider, self.interest_rate_input, container = self.create_slider_with_input(5, 150, 50, "Interest Rate (%):", scale_factor=10)
+        interest_rate_widget.layout.addWidget(container)
+        self.right_layout.addWidget(interest_rate_widget)
+
+        loan_term_widget = DraggableWidget("Loan Term")
+        self.loan_term_slider, self.loan_term_input, container = self.create_slider_with_input(1, 30, 30, "Loan Term (Years):")
+        loan_term_widget.layout.addWidget(container)
+        self.right_layout.addWidget(loan_term_widget)
+
+        extra_payment_widget = DraggableWidget("Extra Payment")
+        self.extra_payment_slider, self.extra_payment_input, container = self.create_slider_with_input(0, 10000, 0, "Extra Monthly Payment ($):")
+        extra_payment_widget.layout.addWidget(container)
+        self.right_layout.addWidget(extra_payment_widget)
 
     def create_slider_with_input(self, min_value, max_value, default_value, label, scale_factor=1):
         """Create a slider with an input field beside it, in a horizontal layout."""
         layout = QHBoxLayout()
-        self.graph_layout.addWidget(QLabel(label))
+        layout.addWidget(QLabel(label))
         slider = QSlider(Qt.Orientation.Horizontal)
         slider.setRange(min_value, max_value)
         slider.setValue(default_value)
@@ -143,9 +178,10 @@ class MoneyAnalyzer(QMainWindow):
 
         layout.addWidget(slider)
         layout.addWidget(input_field)
-        self.graph_layout.addLayout(layout)
 
-        return slider, input_field
+        container = QWidget()
+        container.setLayout(layout)
+        return slider, input_field, container
 
     def update_slider_from_input(self, slider, value, scale_factor=1):
         """Update slider value based on input field value."""
@@ -154,7 +190,11 @@ class MoneyAnalyzer(QMainWindow):
         except ValueError:
             pass  # Ignore invalid input
 
-    def update_graph_and_summary(self):
+    def add_graph(self):
+        graph = Graph()
+        self.right_layout.addWidget(graph)
+
+    def update_data(self):
         loan_amount = self.loan_amount_slider.value()
         down_payment = self.down_payment_slider.value()
         interest_rate = self.interest_rate_slider.value() / 10  # Convert to decimal interest rate
@@ -176,42 +216,11 @@ class MoneyAnalyzer(QMainWindow):
             loan_amount, down_payment, interest_rate, loan_term, extra_payment
         )
 
-        # Update the graph
-        self.ax.clear()
-        self.ax.plot(np.cumsum(principal_payment), label="Principal Paid")
-        self.ax.plot(np.cumsum(interest_payment), label="Interest Paid")
-        self.ax.set_title("Loan Repayment Breakdown")
-        self.ax.set_xlabel("Month")
-        self.ax.set_ylabel("Amount Paid")
-
-        # Move the legend outside the plot, below the graph
-        self.ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=2)
-
-        # Add grid lines based on user preferences
-        self.ax.grid(
-            self.horizontal_grid_checkbox.isChecked(),
-            axis='y',  # Horizontal grid lines
-        )
-        self.ax.grid(
-            self.vertical_grid_checkbox.isChecked(),
-            axis='x',  # Vertical grid lines
-        )
-
-        # Use tight_layout to prevent label cutoff
-        self.fig.tight_layout()
-
-        self.canvas.draw()
-
-        # Update the summary text
-        total_interest_paid = np.sum(interest_payment)
-        apr = interest_rate
-        self.summary_label.setText(
-            f"Loan Amount: ${loan_amount:,.2f}\n"
-            f"APR: {apr:.2f}%\n"
-            f"Monthly Payment: ${monthly_payment:,.2f}\n"
-            f"Loan Term (years): {loan_term:.1f}\n"
-            f"Total Interest Paid: ${total_interest_paid:,.2f}"
-        )
+        # Update all Graph widgets
+        for i in range(self.right_layout.count()):
+            widget = self.right_layout.itemAt(i).widget()
+            if isinstance(widget, Graph):
+                widget.update_graph()
 
         # Update the amortization table
         self.update_amortization_table(monthly_payment, principal_payment, interest_payment)
@@ -274,19 +283,6 @@ class MoneyAnalyzer(QMainWindow):
                     self.amortization_table.setItem(row, column, QTableWidgetItem(str(new_value)))
                 except ValueError:
                     pass  # If conversion fails, leave the cell as is
-
-    def apply_custom_styles(self):
-        # Set a stylesheet for QDockWidget
-        dock_style = """
-        QDockWidget {
-            border: 1px solid #999999;
-        }
-        QDockWidget::title {
-            background: #cccccc;
-            padding-left: 5px;
-        }
-        """
-        self.setStyleSheet(dock_style)
 
 class AttributeEditor(QDialog):
     def __init__(self, attribute_name, current_data_type, parent=None):
