@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QSlider, QLabel, QWidget, QTableWidget, QTableWidgetItem, QLineEdit, QHBoxLayout, QCheckBox, QDockWidget)
+from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QSlider, QLabel, QWidget, QTableWidget, QTableWidgetItem, QLineEdit, QHBoxLayout, QCheckBox, QDockWidget, QDialog, QComboBox, QPushButton)
 from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QPalette, QColor, QIcon
 import numpy as np
@@ -123,6 +123,9 @@ class MoneyAnalyzer(QMainWindow):
         self.amortization_table = QTableWidget()
         self.amortization_layout.addWidget(self.amortization_table)
 
+        # Connect the header click signal to the new method
+        self.amortization_table.horizontalHeader().sectionClicked.connect(self.show_attribute_editor)
+
         # Initial graph and summary update
         self.update_graph_and_summary()
 
@@ -227,6 +230,51 @@ class MoneyAnalyzer(QMainWindow):
 
         self.amortization_table.resizeColumnsToContents()
 
+        # Store the data types for each column
+        self.column_data_types = {
+            0: int,  # Month
+            1: float,  # Monthly Payment
+            2: float,  # Principal
+            3: float,  # Interest
+        }
+
+    def show_attribute_editor(self, column):
+        header_item = self.amortization_table.horizontalHeaderItem(column)
+        if header_item:
+            attribute_name = header_item.text()
+            current_data_type = self.column_data_types[column].__name__
+            editor = AttributeEditor(attribute_name, current_data_type, self)
+            if editor.exec() == QDialog.DialogCode.Accepted:
+                new_data_type = editor.get_selected_data_type()
+                self.update_column_data_type(column, new_data_type)
+
+    def update_column_data_type(self, column, new_data_type):
+        type_conversion = {
+            'int': int,
+            'float': float,
+            'str': str,
+            'hex': hex,
+            'bin': bin
+        }
+        
+        self.column_data_types[column] = type_conversion[new_data_type]
+        
+        # Update the column with the new data type
+        for row in range(self.amortization_table.rowCount()):
+            item = self.amortization_table.item(row, column)
+            if item:
+                value = item.text()
+                try:
+                    if new_data_type == 'hex':
+                        new_value = hex(int(float(value)))
+                    elif new_data_type == 'bin':
+                        new_value = bin(int(float(value)))
+                    else:
+                        new_value = type_conversion[new_data_type](float(value))
+                    self.amortization_table.setItem(row, column, QTableWidgetItem(str(new_value)))
+                except ValueError:
+                    pass  # If conversion fails, leave the cell as is
+
     def apply_custom_styles(self):
         # Set a stylesheet for QDockWidget
         dock_style = """
@@ -239,6 +287,37 @@ class MoneyAnalyzer(QMainWindow):
         }
         """
         self.setStyleSheet(dock_style)
+
+class AttributeEditor(QDialog):
+    def __init__(self, attribute_name, current_data_type, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(f"Edit {attribute_name}")
+        self.setModal(True)
+
+        layout = QVBoxLayout()
+
+        self.data_type_combo = QComboBox()
+        self.data_type_combo.addItems(['int', 'float', 'str', 'hex', 'bin'])
+        self.data_type_combo.setCurrentText(current_data_type)
+
+        layout.addWidget(QLabel(f"Attribute: {attribute_name}"))
+        layout.addWidget(QLabel(f"Current Data Type: {current_data_type}"))
+        layout.addWidget(QLabel("Select new data type:"))
+        layout.addWidget(self.data_type_combo)
+
+        buttons = QHBoxLayout()
+        ok_button = QPushButton("OK")
+        cancel_button = QPushButton("Cancel")
+        ok_button.clicked.connect(self.accept)
+        cancel_button.clicked.connect(self.reject)
+        buttons.addWidget(ok_button)
+        buttons.addWidget(cancel_button)
+
+        layout.addLayout(buttons)
+        self.setLayout(layout)
+
+    def get_selected_data_type(self):
+        return self.data_type_combo.currentText()
 
 # Main function to run the application
 if __name__ == "__main__":
