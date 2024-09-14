@@ -1,8 +1,9 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QSlider, QLabel, QLineEdit, QHBoxLayout, QCheckBox
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QSlider, QLabel, QLineEdit, QHBoxLayout, QCheckBox, QPushButton, QFileDialog, QMessageBox
 from PyQt6.QtCore import Qt
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
 import numpy as np
+import csv
 from ...controllers.loan_controller import LoanController
 
 class LoanWidget(QWidget):
@@ -24,6 +25,10 @@ class LoanWidget(QWidget):
         self.layout.addWidget(self.horizontal_grid_checkbox)
         self.layout.addWidget(self.vertical_grid_checkbox)
 
+        self.export_button = QPushButton("Export to CSV")
+        self.export_button.clicked.connect(self.export_to_csv)
+        self.layout.addWidget(self.export_button)
+
         self.summary_label = QLabel("")
         self.layout.addWidget(self.summary_label)
 
@@ -39,6 +44,7 @@ class LoanWidget(QWidget):
         self.extra_payment_slider.valueChanged.connect(self.update_loan)
         self.horizontal_grid_checkbox.stateChanged.connect(self.update_graph)
         self.vertical_grid_checkbox.stateChanged.connect(self.update_graph)
+        self.canvas.mpl_connect("motion_notify_event", self.on_hover)
 
         # Initial update
         self.update_loan()
@@ -107,3 +113,23 @@ class LoanWidget(QWidget):
 
         self.fig.tight_layout()
         self.canvas.draw()
+
+    def export_to_csv(self):
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save CSV", "", "CSV Files (*.csv);;All Files (*)")
+        if file_path:
+            amortization_data = self.loan_controller.get_amortization_data()
+            with open(file_path, 'w', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow(["Month", "Monthly Payment", "Principal", "Interest"])
+                for month, principal, interest in zip(amortization_data['months'], amortization_data['principal_payments'], amortization_data['interest_payments']):
+                    writer.writerow([month, principal + interest, principal, interest])
+
+    def on_hover(self, event):
+        if event.inaxes == self.ax:
+            # Display information based on hover location
+            month = int(event.xdata)
+            if 0 <= month < len(self.loan_controller.get_amortization_data()['months']):
+                principal = self.loan_controller.get_amortization_data()['principal_payments'][month]
+                interest = self.loan_controller.get_amortization_data()['interest_payments'][month]
+                self.ax.set_title(f"Month: {month}, Principal: ${principal:,.2f}, Interest: ${interest:,.2f}")
+                self.canvas.draw()
