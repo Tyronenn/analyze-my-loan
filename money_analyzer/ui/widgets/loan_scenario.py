@@ -1,6 +1,7 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QSlider, QLabel, QLineEdit, QHBoxLayout
 from PyQt6.QtCore import Qt, pyqtSignal
 from ...controllers.loan_controller import LoanController
+from ...config import *  # Import all constants from config.py
 
 class LoanScenario(QWidget):
     loan_updated = pyqtSignal()
@@ -14,11 +15,22 @@ class LoanScenario(QWidget):
 
     def setup_ui(self):
         layout = QVBoxLayout(self)
-        self.loan_amount_container, self.loan_amount_slider, _ = self.create_slider_with_input(1000, 1000000, 250000, "Loan Amount ($):", name="loan_amount_slider")
-        self.down_payment_container, self.down_payment_slider, _ = self.create_slider_with_input(0, 500000, 50000, "Down Payment ($):", name="down_payment_slider")
-        self.interest_rate_container, self.interest_rate_slider, _ = self.create_slider_with_input(5, 150, 50, "Interest Rate (%):", scale_factor=10, name="interest_rate_slider")
-        self.loan_term_container, self.loan_term_slider, _ = self.create_slider_with_input(1, 30, 30, "Loan Term (Years):", name="loan_term_slider")
-        self.extra_payment_container, self.extra_payment_slider, _ = self.create_slider_with_input(0, 10000, 0, "Extra Monthly Payment ($):", name="extra_payment_slider")
+        self.loan_amount_container, self.loan_amount_slider, _ = self.create_slider_with_input(
+            LOAN_AMOUNT_MIN, LOAN_AMOUNT_MAX, LOAN_AMOUNT_DEFAULT, "Loan Amount ($):", name="loan_amount_slider"
+        )
+        self.down_payment_container, self.down_payment_slider, _ = self.create_slider_with_input(
+            DOWN_PAYMENT_MIN, DOWN_PAYMENT_MAX, DOWN_PAYMENT_DEFAULT, "Down Payment ($):", name="down_payment_slider"
+        )
+        self.interest_rate_container, self.interest_rate_slider, _ = self.create_slider_with_input(
+            INTEREST_RATE_MIN, INTEREST_RATE_MAX, INTEREST_RATE_DEFAULT, "Interest Rate (%):", 
+            scale_factor=INTEREST_RATE_SCALE_FACTOR, name="interest_rate_slider"
+        )
+        self.loan_term_container, self.loan_term_slider, _ = self.create_slider_with_input(
+            LOAN_TERM_MIN, LOAN_TERM_MAX, LOAN_TERM_DEFAULT, "Loan Term (Years):", name="loan_term_slider"
+        )
+        self.extra_payment_container, self.extra_payment_slider, _ = self.create_slider_with_input(
+            EXTRA_PAYMENT_MIN, EXTRA_PAYMENT_MAX, EXTRA_PAYMENT_DEFAULT, "Extra Monthly Payment ($):", name="extra_payment_slider"
+        )
 
         layout.addWidget(self.loan_amount_container)
         layout.addWidget(self.down_payment_container)
