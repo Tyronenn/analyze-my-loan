@@ -204,7 +204,11 @@ class LoanWidget(QWidget):
         self.ax.set_title("Loan Repayment Breakdown")
         self.ax.set_xlabel("Month")
         self.ax.set_ylabel("Amount Paid")
-        self.ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=2)
+        
+        # Check if there are any labels before calling legend
+        handles, labels = self.ax.get_legend_handles_labels()
+        if labels:
+            self.ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=2)
 
         self.ax.grid(
             self.horizontal_grid_checkbox.isChecked(),
