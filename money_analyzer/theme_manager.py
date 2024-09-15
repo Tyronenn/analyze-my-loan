@@ -1,17 +1,41 @@
+"""
+This module provides a ThemeManager class for managing the application's theme.
+It implements a dark theme using Qt's palette and stylesheet system.
+"""
+
 from PyQt6.QtWidgets import QApplication
 from PyQt6.QtGui import QPalette, QColor
 from PyQt6.QtCore import Qt
 
 class ThemeManager:
+    """
+    A singleton class that manages the application's theme.
+    
+    This class creates and applies a dark theme to the application using
+    Qt's palette and stylesheet system.
+    """
+
     _instance = None
 
     @staticmethod
     def get_instance():
+        """
+        Get the singleton instance of ThemeManager.
+
+        Returns:
+            ThemeManager: The singleton instance of ThemeManager.
+        """
         if ThemeManager._instance is None:
             ThemeManager()
         return ThemeManager._instance
 
     def __init__(self):
+        """
+        Initialize the ThemeManager.
+
+        Raises:
+            Exception: If an attempt is made to create a second instance.
+        """
         if ThemeManager._instance is not None:
             raise Exception("This class is a singleton!")
         else:
@@ -21,6 +45,12 @@ class ThemeManager:
         self.style_sheet = self.create_style_sheet()
 
     def create_dark_palette(self):
+        """
+        Create a dark color palette for the application.
+
+        Returns:
+            QPalette: A QPalette object with colors set for a dark theme.
+        """
         palette = QPalette()
         palette.setColor(QPalette.ColorRole.Window, QColor(53, 53, 53))
         palette.setColor(QPalette.ColorRole.WindowText, Qt.GlobalColor.white)
@@ -38,6 +68,12 @@ class ThemeManager:
         return palette
 
     def create_style_sheet(self):
+        """
+        Create a stylesheet for the application's dark theme.
+
+        Returns:
+            str: A string containing CSS-like Qt stylesheet rules.
+        """
         return """
         QToolTip { 
             color: #ffffff; 
@@ -131,5 +167,11 @@ class ThemeManager:
         """
 
     def apply_theme(self, app: QApplication):
+        """
+        Apply the dark theme to the given QApplication instance.
+
+        Args:
+            app (QApplication): The QApplication instance to apply the theme to.
+        """
         app.setPalette(self.dark_palette)
         app.setStyleSheet(self.style_sheet)
