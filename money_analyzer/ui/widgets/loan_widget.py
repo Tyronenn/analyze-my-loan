@@ -5,6 +5,7 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 import matplotlib.pyplot as plt
 import numpy as np
 import csv
+import json
 from ...controllers.loan_controller import LoanController
 from functools import partial
 from .loan_scenario import LoanScenario
@@ -55,6 +56,7 @@ class LoanWidget(QWidget):
         self.init_export_button()
         self.init_summary_label()
         self.init_matplotlib_canvas()
+        self.init_save_load_buttons()
 
     def init_tab_widget(self):
         self.tab_widget = QTabWidget()
@@ -84,6 +86,17 @@ class LoanWidget(QWidget):
         self.canvas = FigureCanvas(self.fig)
         self.layout.addWidget(self.canvas)
         self.canvas.mpl_connect("motion_notify_event", self.on_hover)
+
+    def init_save_load_buttons(self):
+        save_button = QPushButton("Save Scenarios")
+        load_button = QPushButton("Load Scenarios")
+        save_button.clicked.connect(self.save_scenarios)
+        load_button.clicked.connect(self.load_scenarios)
+        
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(save_button)
+        button_layout.addWidget(load_button)
+        self.layout.addLayout(button_layout)
 
     def add_loan_scenario(self):
         scenario = LoanScenario()
@@ -188,6 +201,48 @@ class LoanWidget(QWidget):
                 writer.writerow(["Month", "Monthly Payment", "Principal", "Interest"])
                 for month, principal, interest in zip(amortization_data['months'], amortization_data['principal_payments'], amortization_data['interest_payments']):
                     writer.writerow([month, principal + interest, principal, interest])
+
+    def save_scenarios(self):
+        file_path, _ = QFileDialog.getSaveFileName(self, "Save Loan Scenarios", "", "JSON Files (*.json)")
+        if file_path:
+            scenarios_data = []
+            for scenario in self.loan_scenarios:
+                scenario_data = {
+                    "loan_amount": scenario.loan_amount_slider.value(),
+                    "down_payment": scenario.down_payment_slider.value(),
+                    "interest_rate": scenario.interest_rate_slider.value(),
+                    "loan_term": scenario.loan_term_slider.value(),
+                    "extra_payment": scenario.extra_payment_slider.value(),
+                }
+                scenarios_data.append(scenario_data)
+            
+            with open(file_path, 'w') as f:
+                json.dump(scenarios_data, f)
+            QMessageBox.information(self, "Save Successful", "Loan scenarios saved successfully.")
+
+    def load_scenarios(self):
+        file_path, _ = QFileDialog.getOpenFileName(self, "Load Loan Scenarios", "", "JSON Files (*.json)")
+        if file_path:
+            with open(file_path, 'r') as f:
+                scenarios_data = json.load(f)
+            
+            # Clear existing scenarios
+            for i in range(self.tab_widget.count() - 1, 0, -1):  # Leave the '+' tab
+                self.remove_tab(i)
+            
+            # Load saved scenarios
+            for scenario_data in scenarios_data:
+                self.add_loan_scenario()
+                scenario = self.loan_scenarios[-1]
+                scenario.loan_amount_slider.setValue(scenario_data["loan_amount"])
+                scenario.down_payment_slider.setValue(scenario_data["down_payment"])
+                scenario.interest_rate_slider.setValue(scenario_data["interest_rate"])
+                scenario.loan_term_slider.setValue(scenario_data["loan_term"])
+                scenario.extra_payment_slider.setValue(scenario_data["extra_payment"])
+                scenario.update_loan()
+            
+            self.update_loan()
+            QMessageBox.information(self, "Load Successful", "Loan scenarios loaded successfully.")
 
     def on_hover(self, event):
         if event.inaxes == self.ax:
