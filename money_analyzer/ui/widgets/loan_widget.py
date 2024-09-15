@@ -16,25 +16,28 @@ class CustomTabBar(QTabBar):
 
     def tabInserted(self, index):
         if index != self.count() - 1:  # Ensure the "+" tab does not get a close button
-            close_button = QToolButton(self)
-            close_button.setText('x')  # Set the text to 'x'
-            close_button.setFixedSize(16, 16)  # Set a fixed size for the button
-            close_button.setStyleSheet("""
-                QToolButton {
-                    border: none;
-                    border-radius: 8px;
-                    background-color: transparent;
-                    padding: 0px;
-                    margin: 0px;
-                    qproperty-iconSize: 12px;
-                    text-align: center;
-                }
-                QToolButton:hover {
-                    background-color: lightgray;
-                }
-            """)  # Set the styles for normal and hover states
-            close_button.clicked.connect(partial(self.loan_widget.remove_tab, index))
-            self.setTabButton(index, QTabBar.ButtonPosition.RightSide, close_button)
+            self.add_close_button(index)
+
+    def add_close_button(self, index):
+        close_button = QToolButton(self)
+        close_button.setText('x')  # Set the text to 'x'
+        close_button.setFixedSize(16, 16)  # Set a fixed size for the button
+        close_button.setStyleSheet("""
+            QToolButton {
+                border: none;
+                border-radius: 8px;
+                background-color: transparent;
+                padding: 0px;
+                margin: 0px;
+                qproperty-iconSize: 12px;
+                text-align: center;
+            }
+            QToolButton:hover {
+                background-color: lightgray;
+            }
+        """)  # Set the styles for normal and hover states
+        close_button.clicked.connect(partial(self.loan_widget.remove_tab, index))
+        self.setTabButton(index, QTabBar.ButtonPosition.RightSide, close_button)
 
 class LoanWidget(QWidget):
     def __init__(self):
