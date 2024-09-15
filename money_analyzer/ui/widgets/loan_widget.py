@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import csv
 from ...controllers.loan_controller import LoanController
+from functools import partial
 
 class CustomTabBar(QTabBar):
     def __init__(self, parent=None, loan_widget=None):
@@ -18,7 +19,21 @@ class CustomTabBar(QTabBar):
             close_button = QToolButton(self)
             close_button.setText('x')  # Set the text to 'x'
             close_button.setFixedSize(16, 16)  # Set a fixed size for the button
-            close_button.clicked.connect(lambda: self.loan_widget.remove_tab(index))
+            close_button.setStyleSheet("""
+                QToolButton {
+                    border: none;
+                    border-radius: 8px;
+                    background-color: transparent;
+                    padding: 0px;
+                    margin: 0px;
+                    qproperty-iconSize: 12px;
+                    text-align: center;
+                }
+                QToolButton:hover {
+                    background-color: lightgray;
+                }
+            """)  # Set the styles for normal and hover states
+            close_button.clicked.connect(partial(self.loan_widget.remove_tab, index))
             self.setTabButton(index, QTabBar.ButtonPosition.RightSide, close_button)
 
 class LoanWidget(QWidget):
@@ -124,7 +139,8 @@ class LoanWidget(QWidget):
     def remove_tab(self, index):
         if index != self.tab_widget.count() - 1:  # Ensure the "+" tab is not removed
             self.tab_widget.removeTab(index)
-            self.loan_controllers.pop(index)
+            if index < len(self.loan_controllers):
+                self.loan_controllers.pop(index)
             self.update_loan()
 
     def rename_tab(self, index):
