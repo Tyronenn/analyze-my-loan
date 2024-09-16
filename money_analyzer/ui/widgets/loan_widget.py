@@ -1,14 +1,12 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QSlider, QLabel, QLineEdit, QHBoxLayout, QCheckBox, QPushButton, QFileDialog, QMessageBox, QTabWidget, QInputDialog, QMenu, QTabBar, QToolButton
+from PyQt6.QtWidgets import QLabel, QWidget, QVBoxLayout, QHBoxLayout, QCheckBox, QPushButton, QFileDialog, QMessageBox, QTabWidget, QInputDialog, QMenu, QTabBar, QToolButton, QMainWindow, QListWidget
 from PyQt6.QtCore import Qt, QPoint
 from PyQt6.QtGui import QIcon
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-import matplotlib.pyplot as plt
-import numpy as np
 import csv
 import json
 from ...controllers.loan_controller import LoanController
 from functools import partial
 from .loan_scenario import LoanScenario
+from .graph_widget import GraphWidget
 
 class CustomTabBar(QTabBar):
     def __init__(self, parent=None, loan_widget=None):
@@ -41,21 +39,24 @@ class CustomTabBar(QTabBar):
         close_button.clicked.connect(partial(self.loan_widget.remove_tab, index))
         self.setTabButton(index, QTabBar.ButtonPosition.RightSide, close_button)
 
-class LoanWidget(QWidget):
+class LoanWidget(QMainWindow):
     def __init__(self):
         super().__init__()
         self.loan_scenarios = []
+        self.graphs = []
         self.setup_ui()
         self.add_loan_scenario()
         self.add_plus_tab()
 
     def setup_ui(self):
-        self.layout = QVBoxLayout(self)
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        self.layout = QVBoxLayout(central_widget)
         self.init_tab_widget()
         self.init_checkboxes()
         self.init_export_button()
         self.init_summary_label()
-        self.init_matplotlib_canvas()
+        self.init_graph_controls()
         self.init_save_load_buttons()
 
     def init_tab_widget(self):
@@ -81,11 +82,18 @@ class LoanWidget(QWidget):
         self.summary_label = QLabel("")
         self.layout.addWidget(self.summary_label)
 
-    def init_matplotlib_canvas(self):
-        self.fig, self.ax = plt.subplots(figsize=(6, 4))
-        self.canvas = FigureCanvas(self.fig)
-        self.layout.addWidget(self.canvas)
-        self.canvas.mpl_connect("motion_notify_event", self.on_hover)
+    def init_graph_controls(self):
+        graph_controls_layout = QHBoxLayout()
+        
+        self.add_graph_button = QPushButton("Add Graph")
+        self.add_graph_button.clicked.connect(self.add_graph)
+        graph_controls_layout.addWidget(self.add_graph_button)
+        
+        self.graph_list = QListWidget()
+        self.graph_list.itemSelectionChanged.connect(self.update_selected_graph)
+        graph_controls_layout.addWidget(self.graph_list)
+        
+        self.layout.addLayout(graph_controls_layout)
 
     def init_save_load_buttons(self):
         save_button = QPushButton("Save Scenarios")
@@ -107,6 +115,10 @@ class LoanWidget(QWidget):
         scenario.interest_rate_slider.valueChanged.connect(self.update_loan)
         scenario.loan_term_slider.valueChanged.connect(self.update_loan)
         scenario.extra_payment_slider.valueChanged.connect(self.update_loan)
+        
+        # Connect the include_in_graph checkbox
+        scenario.include_in_graph.stateChanged.connect(self.update_loan)
+        
         self.update_loan()
 
     def add_plus_tab(self):
@@ -128,7 +140,8 @@ class LoanWidget(QWidget):
 
     def rename_tab(self, index):
         if index != self.tab_widget.count() - 1:  # Ensure the "+" tab is not renamed
-            new_name, ok = QInputDialog.getText(self, "Rename Tab", "Enter new name:")
+            current_name = self.tab_widget.tabText(index)
+            new_name, ok = QInputDialog.getText(self, "Rename Tab", "Enter new name:", text=current_name)
             if ok and new_name:
                 self.tab_widget.setTabText(index, new_name)
 
@@ -148,7 +161,7 @@ class LoanWidget(QWidget):
         for scenario in self.loan_scenarios:
             scenario.update_loan()
         self.update_summary()
-        self.update_graph()
+        self.update_all_graphs()
 
     def update_summary(self):
         summaries = [scenario.get_loan_summary() for scenario in self.loan_scenarios]
@@ -163,34 +176,31 @@ class LoanWidget(QWidget):
         ]
         self.summary_label.setText("\n\n".join(summary_texts))
 
-    def update_graph(self):
-        self.ax.clear()
-        for i, scenario in enumerate(self.loan_scenarios):
-            amortization_data = scenario.get_amortization_data()
-            self.ax.plot(amortization_data['months'], amortization_data['principal_payments'], label=f"Principal Paid (Loan {i+1})")
-            self.ax.plot(amortization_data['months'], amortization_data['interest_payments'], label=f"Interest Paid (Loan {i+1})")
-        
-        self.ax.set_title("Loan Repayment Breakdown")
-        self.ax.set_xlabel("Month")
-        self.ax.set_ylabel("Amount Paid")
-        
-        # Check if there are any labels before calling legend
-        handles, labels = self.ax.get_legend_handles_labels()
-        if labels:
-            self.ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.15), ncol=2)
+    def add_graph(self):
+        graph_title, ok = QInputDialog.getText(self, "New Graph", "Enter graph title:")
+        if ok and graph_title:
+            new_graph = GraphWidget(self, graph_title)
+            self.graphs.append(new_graph)
+            self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, new_graph)
+            self.graph_list.addItem(graph_title)
 
-        self.ax.grid(
-            self.horizontal_grid_checkbox.isChecked(),
-            axis='y',
-        )
-        self.ax.grid(
-            self.vertical_grid_checkbox.isChecked(),
-            axis='x',
-        )
+    def update_selected_graph(self):
+        selected_items = self.graph_list.selectedItems()
+        if selected_items:
+            selected_graph = self.graphs[self.graph_list.row(selected_items[0])]
+            selected_graph.update_graph(
+                [scenario for scenario in self.loan_scenarios if scenario.include_in_graph],
+                self.horizontal_grid_checkbox.isChecked(),
+                self.vertical_grid_checkbox.isChecked()
+            )
 
-        # Use subplots_adjust instead of tight_layout
-        self.fig.subplots_adjust(bottom=0.2, top=0.8)
-        self.canvas.draw()
+    def update_all_graphs(self):
+        for graph in self.graphs:
+            graph.update_graph(
+                [scenario for scenario in self.loan_scenarios if scenario.include_in_graph],
+                self.horizontal_grid_checkbox.isChecked(),
+                self.vertical_grid_checkbox.isChecked()
+            )
 
     def export_to_csv(self):
         file_path, _ = QFileDialog.getSaveFileName(self, "Save CSV", "", "CSV Files (*.csv);;All Files (*)")
@@ -243,13 +253,3 @@ class LoanWidget(QWidget):
             
             self.update_loan()
             QMessageBox.information(self, "Load Successful", "Loan scenarios loaded successfully.")
-
-    def on_hover(self, event):
-        if event.inaxes == self.ax:
-            # Display information based on hover location
-            month = int(event.xdata)
-            if 0 <= month < len(self.loan_scenarios[0].get_amortization_data()['months']):
-                principal = self.loan_scenarios[0].get_amortization_data()['principal_payments'][month]
-                interest = self.loan_scenarios[0].get_amortization_data()['interest_payments'][month]
-                self.ax.set_title(f"Month: {month}, Principal: ${principal:,.2f}, Interest: ${interest:,.2f}")
-                self.canvas.draw()

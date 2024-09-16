@@ -1,4 +1,4 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QSlider, QLabel, QLineEdit, QHBoxLayout
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QSlider, QLabel, QLineEdit, QHBoxLayout, QCheckBox
 from PyQt6.QtCore import Qt, pyqtSignal
 from ...controllers.loan_controller import LoanController
 from ...config import *  # Import all constants from config.py
@@ -8,13 +8,16 @@ class LoanScenario(QWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.name = f"Loan {id(self)}"  # Unique name for each scenario
+        self.include_in_graph = QCheckBox("Include in Graph")
+        self.include_in_graph.setChecked(True)
         self.controller = LoanController()
         self.setup_ui()
         self.connect_signals()
         self._updating = False
 
     def setup_ui(self):
-        layout = QVBoxLayout(self)
+        self.layout = QVBoxLayout(self)  # Change this line
         self.loan_amount_container, self.loan_amount_slider, _ = self.create_slider_with_input(
             LOAN_AMOUNT_MIN, LOAN_AMOUNT_MAX, LOAN_AMOUNT_DEFAULT, "Loan Amount ($):", name="loan_amount_slider"
         )
@@ -32,11 +35,12 @@ class LoanScenario(QWidget):
             EXTRA_PAYMENT_MIN, EXTRA_PAYMENT_MAX, EXTRA_PAYMENT_DEFAULT, "Extra Monthly Payment ($):", name="extra_payment_slider"
         )
 
-        layout.addWidget(self.loan_amount_container)
-        layout.addWidget(self.down_payment_container)
-        layout.addWidget(self.interest_rate_container)
-        layout.addWidget(self.loan_term_container)
-        layout.addWidget(self.extra_payment_container)
+        self.layout.addWidget(self.loan_amount_container)
+        self.layout.addWidget(self.down_payment_container)
+        self.layout.addWidget(self.interest_rate_container)
+        self.layout.addWidget(self.loan_term_container)
+        self.layout.addWidget(self.extra_payment_container)
+        self.layout.addWidget(self.include_in_graph)  # Add this line
 
     def create_slider_with_input(self, min_value, max_value, default_value, label, scale_factor=1, name=None):
         container = QWidget()
