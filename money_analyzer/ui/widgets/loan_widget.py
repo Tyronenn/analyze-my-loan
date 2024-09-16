@@ -1,12 +1,11 @@
-from PyQt6.QtWidgets import QLabel, QWidget, QVBoxLayout, QHBoxLayout, QCheckBox, QPushButton, QFileDialog, QMessageBox, QTabWidget, QInputDialog, QMenu, QTabBar, QToolButton, QMainWindow, QListWidget
-from PyQt6.QtCore import Qt, QPoint
+from PyQt6.QtWidgets import QLabel, QWidget, QVBoxLayout, QHBoxLayout, QCheckBox, QPushButton, QFileDialog, QMessageBox, QTabWidget, QInputDialog, QMenu, QTabBar, QToolButton, QMainWindow, QListWidget, QDialog, QDialogButtonBox
+from PyQt6.QtCore import Qt, QPoint, pyqtSignal
 from PyQt6.QtGui import QIcon
 import csv
 import json
 from ...controllers.loan_controller import LoanController
 from functools import partial
 from .loan_scenario import LoanScenario
-from .graph_widget import GraphWidget
 
 class CustomTabBar(QTabBar):
     def __init__(self, parent=None, loan_widget=None):
@@ -20,8 +19,8 @@ class CustomTabBar(QTabBar):
 
     def add_close_button(self, index):
         close_button = QToolButton(self)
-        close_button.setText('x')  # Set the text to 'x'
-        close_button.setFixedSize(16, 16)  # Set a fixed size for the button
+        close_button.setText('x')
+        close_button.setFixedSize(16, 16)
         close_button.setStyleSheet("""
             QToolButton {
                 border: none;
@@ -35,15 +34,36 @@ class CustomTabBar(QTabBar):
             QToolButton:hover {
                 background-color: lightgray;
             }
-        """)  # Set the styles for normal and hover states
-        close_button.clicked.connect(partial(self.loan_widget.remove_tab, index))
+        """)
+        close_button.clicked.connect(lambda: self.loan_widget.remove_tab(self.tabAt(close_button.pos())))
+        
+        # Remove existing button if there is one
+        existing_button = self.tabButton(index, QTabBar.ButtonPosition.RightSide)
+        if existing_button:
+            existing_button.deleteLater()
+        
         self.setTabButton(index, QTabBar.ButtonPosition.RightSide, close_button)
 
+    def tabRemoved(self, index):
+        # Reassign close buttons to all tabs except the last one ("+")
+        for i in range(self.count() - 1):
+            self.add_close_button(i)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        # Ensure all tabs (except the last one) have close buttons after resize
+        for i in range(self.count() - 1):
+            self.add_close_button(i)
+
 class LoanWidget(QMainWindow):
+    loan_updated = pyqtSignal()
+    loan_added = pyqtSignal()
+    loan_removed = pyqtSignal()
+    loan_renamed = pyqtSignal()
+
     def __init__(self):
         super().__init__()
         self.loan_scenarios = []
-        self.graphs = []
         self.setup_ui()
         self.add_loan_scenario()
         self.add_plus_tab()
@@ -53,10 +73,8 @@ class LoanWidget(QMainWindow):
         self.setCentralWidget(central_widget)
         self.layout = QVBoxLayout(central_widget)
         self.init_tab_widget()
-        self.init_checkboxes()
         self.init_export_button()
         self.init_summary_label()
-        self.init_graph_controls()
         self.init_save_load_buttons()
 
     def init_tab_widget(self):
@@ -67,12 +85,6 @@ class LoanWidget(QMainWindow):
         self.tab_widget.tabBarDoubleClicked.connect(self.rename_tab)
         self.layout.addWidget(self.tab_widget)
 
-    def init_checkboxes(self):
-        self.horizontal_grid_checkbox = QCheckBox("Show Horizontal Grid Lines")
-        self.vertical_grid_checkbox = QCheckBox("Show Vertical Grid Lines")
-        self.layout.addWidget(self.horizontal_grid_checkbox)
-        self.layout.addWidget(self.vertical_grid_checkbox)
-
     def init_export_button(self):
         self.export_button = QPushButton("Export to CSV")
         self.export_button.clicked.connect(self.export_to_csv)
@@ -81,19 +93,6 @@ class LoanWidget(QMainWindow):
     def init_summary_label(self):
         self.summary_label = QLabel("")
         self.layout.addWidget(self.summary_label)
-
-    def init_graph_controls(self):
-        graph_controls_layout = QHBoxLayout()
-        
-        self.add_graph_button = QPushButton("Add Graph")
-        self.add_graph_button.clicked.connect(self.add_graph)
-        graph_controls_layout.addWidget(self.add_graph_button)
-        
-        self.graph_list = QListWidget()
-        self.graph_list.itemSelectionChanged.connect(self.update_selected_graph)
-        graph_controls_layout.addWidget(self.graph_list)
-        
-        self.layout.addLayout(graph_controls_layout)
 
     def init_save_load_buttons(self):
         save_button = QPushButton("Save Scenarios")
@@ -109,17 +108,17 @@ class LoanWidget(QMainWindow):
     def add_loan_scenario(self):
         scenario = LoanScenario()
         self.loan_scenarios.append(scenario)
-        self.tab_widget.insertTab(self.tab_widget.count() - 1, scenario, f"Loan {len(self.loan_scenarios)}")
+        tab_index = self.tab_widget.count() - 1  # Insert before the "+" tab
+        self.tab_widget.insertTab(tab_index, scenario, f"Loan {len(self.loan_scenarios)}")
+        scenario.name = f"Loan {len(self.loan_scenarios)}"
         scenario.loan_amount_slider.valueChanged.connect(self.update_loan)
         scenario.down_payment_slider.valueChanged.connect(self.update_loan)
         scenario.interest_rate_slider.valueChanged.connect(self.update_loan)
         scenario.loan_term_slider.valueChanged.connect(self.update_loan)
         scenario.extra_payment_slider.valueChanged.connect(self.update_loan)
         
-        # Connect the include_in_graph checkbox
-        scenario.include_in_graph.stateChanged.connect(self.update_loan)
-        
         self.update_loan()
+        self.loan_added.emit()
 
     def add_plus_tab(self):
         plus_tab = QWidget()
@@ -136,7 +135,19 @@ class LoanWidget(QMainWindow):
             self.tab_widget.removeTab(index)
             if index < len(self.loan_scenarios):
                 self.loan_scenarios.pop(index)
+            
+            # Set focus to an appropriate tab
+            if self.tab_widget.count() > 1:  # If there's at least one loan tab left
+                if index > 0:
+                    self.tab_widget.setCurrentIndex(index - 1)  # Focus on the previous tab
+                else:
+                    self.tab_widget.setCurrentIndex(0)  # Focus on the first tab
+            else:
+                self.add_loan_scenario()  # If no loans left, add a new one
+                self.tab_widget.setCurrentIndex(0)  # Focus on the newly added loan
+            
             self.update_loan()
+            self.loan_removed.emit()
 
     def rename_tab(self, index):
         if index != self.tab_widget.count() - 1:  # Ensure the "+" tab is not renamed
@@ -144,6 +155,9 @@ class LoanWidget(QMainWindow):
             new_name, ok = QInputDialog.getText(self, "Rename Tab", "Enter new name:", text=current_name)
             if ok and new_name:
                 self.tab_widget.setTabText(index, new_name)
+                self.loan_scenarios[index].name = new_name  # Update the scenario name
+                self.update_summary()  # Update the summary to reflect the new name
+                self.loan_renamed.emit()
 
     def show_context_menu(self, position: QPoint):
         context_menu = QMenu(self)
@@ -161,46 +175,20 @@ class LoanWidget(QMainWindow):
         for scenario in self.loan_scenarios:
             scenario.update_loan()
         self.update_summary()
-        self.update_all_graphs()
+        self.loan_updated.emit()
 
     def update_summary(self):
         summaries = [scenario.get_loan_summary() for scenario in self.loan_scenarios]
         summary_texts = [
-            f"Loan {i+1}:\n"
+            f"{scenario.name}:\n"
             f"Loan Amount: ${summary['loan_amount']:,.2f}\n"
             f"APR: {scenario.controller.loan.interest_rate:.2f}%\n"
             f"Monthly Payment: ${summary['monthly_payment']:,.2f}\n"
             f"Loan Term (years): {summary['loan_term']:.1f}\n"
             f"Total Interest Paid: ${summary['total_interest']:,.2f}\n"
-            for i, (scenario, summary) in enumerate(zip(self.loan_scenarios, summaries))
+            for scenario, summary in zip(self.loan_scenarios, summaries)
         ]
         self.summary_label.setText("\n\n".join(summary_texts))
-
-    def add_graph(self):
-        graph_title, ok = QInputDialog.getText(self, "New Graph", "Enter graph title:")
-        if ok and graph_title:
-            new_graph = GraphWidget(self, graph_title)
-            self.graphs.append(new_graph)
-            self.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, new_graph)
-            self.graph_list.addItem(graph_title)
-
-    def update_selected_graph(self):
-        selected_items = self.graph_list.selectedItems()
-        if selected_items:
-            selected_graph = self.graphs[self.graph_list.row(selected_items[0])]
-            selected_graph.update_graph(
-                [scenario for scenario in self.loan_scenarios if scenario.include_in_graph],
-                self.horizontal_grid_checkbox.isChecked(),
-                self.vertical_grid_checkbox.isChecked()
-            )
-
-    def update_all_graphs(self):
-        for graph in self.graphs:
-            graph.update_graph(
-                [scenario for scenario in self.loan_scenarios if scenario.include_in_graph],
-                self.horizontal_grid_checkbox.isChecked(),
-                self.vertical_grid_checkbox.isChecked()
-            )
 
     def export_to_csv(self):
         file_path, _ = QFileDialog.getSaveFileName(self, "Save CSV", "", "CSV Files (*.csv);;All Files (*)")

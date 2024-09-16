@@ -2,6 +2,22 @@ import matplotlib.pyplot as plt
 import mplcursors
 import numpy as np
 
+class DataSource:
+    def get_data(self):
+        raise NotImplementedError
+
+    def get_name(self):
+        raise NotImplementedError
+
+    def get_title(self):
+        return "Financial Data"
+
+    def get_x_label(self):
+        return "X-axis"
+
+    def get_y_label(self):
+        return "Y-axis"
+
 def create_interactive_line_graph(x_data, y_data, title="Line Graph", x_label="X-axis", y_label="Y-axis"):
     fig, ax = plt.subplots()
     ax.plot(x_data, y_data, label='Data Line')

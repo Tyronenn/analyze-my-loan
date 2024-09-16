@@ -1,16 +1,15 @@
-from PyQt6.QtWidgets import QWidget, QVBoxLayout, QSlider, QLabel, QLineEdit, QHBoxLayout, QCheckBox
+from PyQt6.QtWidgets import QWidget, QVBoxLayout, QSlider, QLabel, QLineEdit, QHBoxLayout
 from PyQt6.QtCore import Qt, pyqtSignal
 from ...controllers.loan_controller import LoanController
 from ...config import *  # Import all constants from config.py
+from ...utils.data_visualization import DataSource
 
-class LoanScenario(QWidget):
+class LoanScenario(DataSource, QWidget):
     loan_updated = pyqtSignal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
         self.name = f"Loan {id(self)}"  # Unique name for each scenario
-        self.include_in_graph = QCheckBox("Include in Graph")
-        self.include_in_graph.setChecked(True)
         self.controller = LoanController()
         self.setup_ui()
         self.connect_signals()
@@ -40,7 +39,6 @@ class LoanScenario(QWidget):
         self.layout.addWidget(self.interest_rate_container)
         self.layout.addWidget(self.loan_term_container)
         self.layout.addWidget(self.extra_payment_container)
-        self.layout.addWidget(self.include_in_graph)  # Add this line
 
     def create_slider_with_input(self, min_value, max_value, default_value, label, scale_factor=1, name=None):
         container = QWidget()
@@ -91,3 +89,22 @@ class LoanScenario(QWidget):
 
     def get_loan_summary(self):
         return self.controller.get_loan_summary()
+
+    def get_data(self):
+        amortization_data = self.get_amortization_data()
+        return {
+            'x': amortization_data['months'],
+            'y': amortization_data['principal_payments']
+        }
+
+    def get_name(self):
+        return f"{self.name} - Principal"
+
+    def get_title(self):
+        return "Loan Amortization"
+
+    def get_x_label(self):
+        return "Months"
+
+    def get_y_label(self):
+        return "Amount ($)"
