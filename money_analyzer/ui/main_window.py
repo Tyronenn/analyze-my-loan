@@ -1,8 +1,22 @@
-from PyQt6.QtWidgets import QMainWindow, QMenuBar, QMenu, QDockWidget, QInputDialog, QListWidget, QPushButton, QVBoxLayout, QWidget, QCheckBox
-from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QMainWindow, QMenuBar, QMenu, QDockWidget, QInputDialog, QListWidget, QPushButton, QVBoxLayout, QWidget, QCheckBox, QLabel, QHBoxLayout
+from PyQt6.QtCore import Qt, pyqtSignal, QMimeData
+from PyQt6.QtGui import QDrag
 from .widgets.loan_widget import LoanWidget
 from .widgets.graph_widget import GraphWidget
-from ..controllers.graph_manager import GraphManager
+from ..controllers.graph_manager import GraphManager  # Add this import
+
+class DraggableLabel(QLabel):
+    def __init__(self, text, main_window, parent=None):
+        super().__init__(text, parent)
+        self.setMouseTracking(True)
+        self.main_window = main_window
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            drag = QDrag(self)
+            mime_data = self.main_window.create_mime_data(self.text())
+            drag.setMimeData(mime_data)
+            drag.exec(Qt.DropAction.CopyAction)
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -11,9 +25,19 @@ class MainWindow(QMainWindow):
         self.setGeometry(100, 100, 1200, 800)
 
         self.graph_manager = GraphManager(self)
+        self.checkboxes = {}
+        self.current_graph = None
         self.setup_menu_bar()
         self.setup_dock_widgets()
         self.setup_graph_controls()
+
+    def create_mime_data(self, text):
+        mime_data = QMimeData()
+        if self.current_graph:
+            mime_data.setText(f"{self.current_graph.windowTitle()}:{text}")
+        else:
+            mime_data.setText(text)
+        return mime_data
 
     def setup_menu_bar(self):
         menu_bar = QMenuBar(self)
@@ -36,10 +60,56 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.DockWidgetArea.LeftDockWidgetArea, self.loan_dock)
 
         # Connect signals from LoanWidget to update graphs
-        self.loan_widget.loan_updated.connect(self.update_all_graphs)
-        self.loan_widget.loan_added.connect(self.update_all_graphs)
-        self.loan_widget.loan_removed.connect(self.update_all_graphs)
-        self.loan_widget.loan_renamed.connect(self.update_all_graphs)
+        self.loan_widget.loan_updated.connect(self.update_checkboxes)
+        self.loan_widget.loan_added.connect(self.update_checkboxes)
+        self.loan_widget.loan_removed.connect(self.update_checkboxes)
+        self.loan_widget.loan_renamed.connect(self.update_checkboxes)
+
+    def update_checkboxes(self):
+        # Update checkboxes based on current loan scenarios
+        current_scenarios = set(scenario.name for scenario in self.loan_widget.loan_scenarios)
+        
+        # Remove checkboxes for scenarios that no longer exist
+        for name in list(self.checkboxes.keys()):
+            if name not in current_scenarios:
+                del self.checkboxes[name]
+        
+        # Add new checkboxes for new scenarios
+        for scenario in self.loan_widget.loan_scenarios:
+            if scenario.name not in self.checkboxes:
+                self.checkboxes[scenario.name] = True  # Default to checked
+
+        self.update_loan_selection_layout()
+        self.update_all_graphs()
+
+    def update_loan_selection_layout(self):
+        # Clear previous loan selection widgets
+        for i in reversed(range(self.loan_selection_layout.count())): 
+            self.loan_selection_layout.itemAt(i).widget().setParent(None)
+
+        # Add current checkboxes and draggable labels to the layout
+        for scenario in self.loan_widget.loan_scenarios:
+            scenario_widget = QWidget()
+            scenario_layout = QVBoxLayout(scenario_widget)
+
+            checkbox = QCheckBox(scenario.name)
+            checkbox.setChecked(self.checkboxes.get(scenario.name, True))  # Use stored state or default to True
+            checkbox.stateChanged.connect(lambda state, s=scenario.name: self.checkbox_state_changed(s, state))
+            scenario_layout.addWidget(checkbox)
+
+            for param in ['Principal Balance', 'Monthly Payment', 'Cumulative Interest', 'Interest Rate']:
+                label = DraggableLabel(f"{scenario.name} - {param}", self)
+                scenario_layout.addWidget(label)
+
+            self.loan_selection_layout.addWidget(scenario_widget)
+
+    def checkbox_state_changed(self, scenario_name, state):
+        self.checkboxes[scenario_name] = state == Qt.CheckState.Checked
+        self.update_all_graphs()
+
+    def update_current_graph(self):
+        if self.current_graph:
+            self.update_graph(self.current_graph)
 
     def setup_graph_controls(self):
         self.graph_controls = QWidget()
@@ -86,28 +156,19 @@ class MainWindow(QMainWindow):
         selected_items = self.graph_list.selectedItems()
         if selected_items:
             selected_graph_title = selected_items[0].text()
-            selected_graph = next((graph for graph in self.graph_manager.graphs if graph.windowTitle() == selected_graph_title), None)
-            if selected_graph:
-                self.show_loan_selection(selected_graph)
+            self.current_graph = next((graph for graph in self.graph_manager.graphs if graph.windowTitle() == selected_graph_title), None)
+            if self.current_graph:
+                self.show_loan_selection(self.current_graph)
 
     def show_loan_selection(self, graph):
-        # Clear previous loan selection widgets
-        for i in reversed(range(self.loan_selection_layout.count())): 
-            self.loan_selection_layout.itemAt(i).widget().setParent(None)
-
-        self.checkboxes = []
-        for scenario in self.loan_widget.loan_scenarios:
-            checkbox = QCheckBox(scenario.name)
-            checkbox.setChecked(True)  # Default to checked
-            checkbox.stateChanged.connect(lambda: self.update_graph(graph))
-            self.checkboxes.append(checkbox)
-            self.loan_selection_layout.addWidget(checkbox)
-
+        self.update_loan_selection_layout()
         self.update_graph(graph)
 
     def update_graph(self, graph):
-        selected_scenarios = [scenario for scenario, checkbox in zip(self.loan_widget.loan_scenarios, self.checkboxes) if checkbox.isChecked()]
-        graph.update_graph(selected_scenarios)
+        if graph:  # Add this check
+            selected_scenarios = [scenario for scenario in self.loan_widget.loan_scenarios 
+                                  if self.checkboxes.get(scenario.name, True)]  # Default to True if not found
+            graph.update_graph(selected_scenarios)
 
     def delete_selected_graph(self):
         selected_items = self.graph_list.selectedItems()
@@ -119,8 +180,7 @@ class MainWindow(QMainWindow):
     def update_all_graphs(self):
         for graph in self.graph_manager.graphs:
             if not graph.isHidden():
-                selected_scenarios = [scenario for scenario, checkbox in zip(self.loan_widget.loan_scenarios, self.checkboxes) if checkbox.isChecked()]
-                graph.update_graph(selected_scenarios)
+                self.update_graph(graph)
 
     def show_loan_analyzer(self):
         self.loan_dock.show()

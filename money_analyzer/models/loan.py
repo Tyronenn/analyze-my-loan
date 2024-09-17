@@ -7,6 +7,7 @@ class Loan:
         self.term = term
         self.down_payment = down_payment
         self.extra_payment = extra_payment
+        self.monthly_payment = self.calculate_monthly_payment()
 
     def calculate_monthly_payment(self):
         loan_amount = self.principal - self.down_payment
@@ -17,27 +18,28 @@ class Loan:
         return (loan_amount * monthly_rate * (1 + monthly_rate) ** num_payments) / ((1 + monthly_rate) ** num_payments - 1)
 
     def generate_amortization_schedule(self):
-        monthly_payment = self.calculate_monthly_payment()
         remaining_balance = self.principal - self.down_payment
         schedule = []
+        cumulative_interest = 0
 
         for month in range(1, self.term * 12 + 1):
             interest_payment = remaining_balance * (self.interest_rate / 12 / 100)
-            principal_payment = monthly_payment - interest_payment + self.extra_payment
+            principal_payment = self.monthly_payment - interest_payment + self.extra_payment
             
             if remaining_balance - principal_payment < 0:
                 principal_payment = remaining_balance
                 interest_payment = remaining_balance * (self.interest_rate / 12 / 100)
-                monthly_payment = principal_payment + interest_payment
 
             remaining_balance -= principal_payment
+            cumulative_interest += interest_payment
 
             schedule.append({
                 'month': month,
-                'payment': monthly_payment + self.extra_payment,
+                'payment': self.monthly_payment + self.extra_payment,
                 'principal': principal_payment,
                 'interest': interest_payment,
-                'balance': max(0, remaining_balance)
+                'balance': max(0, remaining_balance),
+                'cumulative_interest': cumulative_interest
             })
 
             if remaining_balance <= 0:
@@ -47,8 +49,15 @@ class Loan:
 
     def calculate_loan_details(self):
         schedule = self.generate_amortization_schedule()
-        monthly_payment = self.calculate_monthly_payment() + self.extra_payment
         principal_payments = [payment['principal'] for payment in schedule]
         interest_payments = [payment['interest'] for payment in schedule]
+        remaining_balance = [payment['balance'] for payment in schedule]
+        cumulative_interest = [payment['cumulative_interest'] for payment in schedule]
         
-        return monthly_payment, np.array(principal_payments), np.array(interest_payments)
+        return {
+            'months': list(range(1, len(schedule) + 1)),
+            'principal_payments': principal_payments,
+            'interest_payments': interest_payments,
+            'remaining_balance': remaining_balance,
+            'cumulative_interest': cumulative_interest
+        }

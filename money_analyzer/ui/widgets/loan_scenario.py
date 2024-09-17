@@ -108,3 +108,18 @@ class LoanScenario(DataSource, QWidget):
 
     def get_y_label(self):
         return "Amount ($)"
+
+    def get_data_for_param(self, param_name):
+        amortization_data = self.get_amortization_data()
+        months = amortization_data['months']
+        
+        if param_name == 'Principal Balance':
+            return months, amortization_data['remaining_balance']
+        elif param_name == 'Monthly Payment':
+            return months, [self.controller.loan.monthly_payment] * len(months)
+        elif param_name == 'Cumulative Interest':
+            return months, amortization_data['cumulative_interest']
+        elif param_name == 'Interest Rate':
+            return months, [self.controller.loan.interest_rate] * len(months)
+        else:
+            raise ValueError(f"Unknown parameter: {param_name}")

@@ -1,5 +1,6 @@
 from PyQt6.QtWidgets import QWidget, QVBoxLayout, QDockWidget
 from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtGui import QDragEnterEvent, QDropEvent
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 import matplotlib.pyplot as plt
@@ -18,6 +19,7 @@ class GraphWidget(QDockWidget):
         self.content = QWidget()
         self.setWidget(self.content)
         self.setup_ui()
+        self.setAcceptDrops(True)
 
     def setup_ui(self):
         self.layout = QVBoxLayout(self.content)
@@ -86,3 +88,58 @@ class GraphWidget(QDockWidget):
     def showEvent(self, event):
         self.visibilityChanged.emit(True)
         super().showEvent(event)
+
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        if event.mimeData().hasText():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event: QDropEvent):
+        text = event.mimeData().text()
+        if ':' in text:
+            graph_title, data = text.split(':', 1)
+            if self.windowTitle() == graph_title:
+                scenario_name, param_name = data.rsplit(' - ', 1)
+                self.add_data_to_graph(scenario_name, param_name)
+        else:
+            # Handle the case where there's no graph title (e.g., when dragging to the first graph)
+            scenario_name, param_name = text.rsplit(' - ', 1)
+            self.add_data_to_graph(scenario_name, param_name)
+        event.acceptProposedAction()
+
+    def add_data_to_graph(self, scenario_name, param_name):
+        scenario = next((s for s in self.parent().loan_widget.loan_scenarios if s.name == scenario_name), None)
+        if scenario:
+            x, y = scenario.get_data_for_param(param_name)
+            self.ax.plot(x, y, label=f"{scenario_name} - {param_name}")
+            self.ax.legend()
+            self.ax.set_xlabel("Months")
+            self.ax.set_ylabel(param_name)
+            self.ax.set_title(f"{scenario_name} - {param_name}")
+            self.canvas.draw()
+        else:
+            print(f"Scenario '{scenario_name}' not found")
+
+    def closeEvent(self, event):
+        self.visibilityChanged.emit(False)
+        super().closeEvent(event)
+
+    def showEvent(self, event):
+        self.visibilityChanged.emit(True)
+        super().showEvent(event)
+
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        if event.mimeData().hasText():
+            event.acceptProposedAction()
+
+    def dropEvent(self, event: QDropEvent):
+        text = event.mimeData().text()
+        if ':' in text:
+            graph_title, data = text.split(':', 1)
+            if self.windowTitle() == graph_title:
+                scenario_name, param_name = data.rsplit(' - ', 1)
+                self.add_data_to_graph(scenario_name, param_name)
+        else:
+            # Handle the case where there's no graph title (e.g., when dragging to the first graph)
+            scenario_name, param_name = text.rsplit(' - ', 1)
+            self.add_data_to_graph(scenario_name, param_name)
+        event.acceptProposedAction()
