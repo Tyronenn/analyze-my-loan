@@ -20,7 +20,7 @@ The calculator can handle various types of loans and provides an amortization ta
 
 ## Technologies Used
 
-- **Python 3.x**
+- **Python 3.11.7 and later**
 - **PyQt6**: For the graphical user interface (GUI).
 - **Matplotlib**: For plotting the loan repayment graph.
 - **NumPy**: For performing loan payment calculations.
